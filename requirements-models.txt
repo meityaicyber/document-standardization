@@ -1,0 +1,9 @@
+# Only needed for IN-PROCESS inference (weights loaded inside the app).
+# The recommended deployment runs the model in a local inference server instead
+# (e.g. `vllm serve /models/gemma-4-31B-it`) installed in its own environment.
+-r requirements.txt
+torch>=2.4.0
+transformers>=4.57.0
+accelerate>=1.0.0
+# On a connected staging machine only, to fetch weights: python -m report_to_json.download
+huggingface_hub>=0.25.0

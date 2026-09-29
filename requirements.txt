@@ -1,0 +1,9 @@
+# Pipeline, malware pre-gate and GUI. Models are served separately (see requirements-models.txt).
+pymupdf>=1.24.0
+pdfplumber>=0.10.0
+Pillow>=10.1.0
+jsonschema>=4.21.0
+yara-python>=4.3.0
+python-dotenv>=1.0.0
+# DOCX -> PDF through Microsoft Word on Windows (alternatively install LibreOffice)
+pywin32>=306; sys_platform == "win32"
