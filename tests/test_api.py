@@ -1,4 +1,4 @@
-"""The integration function: report path in, master-schema JSON out."""
+"""The integration function: report path in, the standardised JSON (as text) out."""
 
 import json
 
@@ -33,13 +33,15 @@ def use_backend(monkeypatch, tmp_path):
 
 def test_returns_the_json_for_a_report(report_pdf, tmp_path, use_backend):
     use_backend(perfect_model(report_pdf))
-    data = report_to_json.standardize_report(report_pdf, tmp_path / "out")
+    response = report_to_json.standardize_report(report_pdf, tmp_path / "out")
 
-    assert isinstance(data, dict) and set(data) == set(schema.template())
+    assert isinstance(response, str)
+    data = json.loads(response)
+    assert set(data) == set(schema.template())  # the master schema and nothing else
     assert schema.validate(data) == []
     assert [o["title"] for o in data["detailed_observations"]] == ["Broken Authentication", "Business Logic Failure"]
-    # The same JSON is on disk, next to the run report.
-    assert json.loads((tmp_path / "out" / "acme-report.json").read_text(encoding="utf-8")) == data
+    # The response is the output: byte-for-byte the saved JSON file.
+    assert response == (tmp_path / "out" / "acme-report.json").read_text(encoding="utf-8")
     assert (tmp_path / "out" / "acme-report.meta.json").exists()
 
 
@@ -51,17 +53,23 @@ def test_accepts_string_paths_and_reuses_the_pipeline(report_pdf, tmp_path, use_
     assert created == [1]  # the model is set up once per process
 
 
-def test_fallback_output_raises_unless_allowed(report_pdf, tmp_path, use_backend):
-    down = FakeBackend(lambda *a: BackendError("server down"))
-    use_backend(down)
-    with pytest.raises(api.ModelPipelineFailed) as exc:
-        api.standardize_report(report_pdf, tmp_path / "out")
-    assert exc.value.result.status == "fallback"
-    assert "fell back" in str(exc.value)
-
-    data = api.standardize_report(report_pdf, tmp_path / "out", allow_fallback=True)
+def test_fallback_output_is_still_returned_with_a_warning(report_pdf, tmp_path, use_backend, caplog):
+    use_backend(FakeBackend(lambda *a: BackendError("server down")))
+    with caplog.at_level("WARNING", logger="report_to_json.api"):
+        data = json.loads(api.standardize_report(report_pdf, tmp_path / "out"))
     assert set(data) == set(schema.template())
     assert len(data["detailed_observations"]) == 2  # the rule-based parser's result
+    assert "model pipeline failed" in caplog.text
+    run_report = json.loads((tmp_path / "out" / "acme-report.meta.json").read_text(encoding="utf-8"))
+    assert run_report["status"] == "fallback"
+
+
+def test_strict_mode_raises_on_fallback(report_pdf, tmp_path, use_backend):
+    use_backend(FakeBackend(lambda *a: BackendError("server down")))
+    with pytest.raises(api.ModelPipelineFailed) as exc:
+        api.standardize_report(report_pdf, tmp_path / "out", strict=True)
+    assert exc.value.result.status == "fallback"
+    assert "fell back" in str(exc.value)
 
 
 def test_process_report_returns_status_and_run_report(report_pdf, tmp_path, use_backend):

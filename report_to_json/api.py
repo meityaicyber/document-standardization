@@ -3,12 +3,16 @@ Integration entry points.
 
     from report_to_json import standardize_report
 
-    data = standardize_report("path/to/report.pdf")   # dict shaped exactly like master_schema.json
+    response = standardize_report("path/to/report.pdf")   # JSON text: the standardised report
 
-``standardize_report`` returns only the JSON, so it refuses to hand back a result
-produced by the fallback: a caller could not tell it from a model result. Use
-``process_report`` when you want the run status and report alongside the JSON, or
-pass ``allow_fallback=True`` to accept fallback output knowingly.
+``standardize_report`` takes a report and returns the JSON that the pipeline
+produced for it. That JSON is the output: exactly the structure of
+``master_schema.json``, identical to the ``<name>.json`` file written alongside.
+
+It returns whenever a result exists, including when the fallback had to be used
+(this is logged as a warning and recorded in the run report). Pass ``strict=True``
+to get ``ModelPipelineFailed`` instead, or use ``process_report`` when the caller
+needs the run status and report next to the JSON.
 
 The pipeline (and with it the model) is created once per process and reused.
 Calls are serialised: one document is processed at a time.
@@ -16,13 +20,17 @@ Calls are serialised: one document is processed at a time.
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 import threading
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
 
 from . import config
 from .pipeline import DocumentPipeline, PipelineError, PipelineResult
+
+log = logging.getLogger(__name__)
 
 PathLike = Union[str, "os.PathLike[str]"]
 
@@ -47,7 +55,7 @@ def process_report(report_path: PathLike, output_dir: Optional[PathLike] = None,
                    enable_security_gate: bool = True) -> PipelineResult:
     """Run the full pipeline on one report and return the complete result.
 
-    ``result.data`` is the master-schema JSON, ``result.status`` is "ok",
+    ``result.data`` is the master-schema JSON as a dict, ``result.status`` is "ok",
     "needs_review" or "fallback", ``result.meta`` is the run report, and
     ``result.json_path`` / ``result.meta_path`` are the files written.
 
@@ -64,33 +72,36 @@ def process_report(report_path: PathLike, output_dir: Optional[PathLike] = None,
 
 
 def standardize_report(report_path: PathLike, output_dir: Optional[PathLike] = None, *,
-                       allow_fallback: bool = False, enable_security_gate: bool = True) -> Dict[str, Any]:
-    """Convert one audit report (PDF or DOCX) into the standardised JSON.
+                       strict: bool = False, enable_security_gate: bool = True) -> str:
+    """Convert one audit report (PDF or DOCX) and return the standardised JSON.
 
     Parameters
     ----------
     report_path : path to the report.
     output_dir : where ``<name>.json``, ``<name>.meta.json`` and the transcript are
-        written. Defaults to the project's ``outputs/`` folder.
-    allow_fallback : return the fallback's JSON instead of raising when the model
-        pipeline fails.
+        also written. Defaults to the project's ``outputs/`` folder.
+    strict : raise ``ModelPipelineFailed`` instead of returning JSON that the
+        fallback produced.
     enable_security_gate : run the malware pre-gate (leave on for untrusted files).
 
     Returns
     -------
-    dict with exactly the structure of ``master_schema.json``. Fields the report does
-    not state are ``None``.
+    The JSON document as text, with exactly the structure of ``master_schema.json``.
+    Fields the report does not state are ``null``.
 
     Raises
     ------
-    ModelPipelineFailed : the model was unavailable or failed and ``allow_fallback`` is False.
     DocumentBlocked : the malware pre-gate blocked the file.
-    PipelineError : the file is missing, of an unsupported type, or could not be processed.
+    PipelineError : the file is missing, of an unsupported type, or could not be
+        processed. In these cases no JSON exists to return.
     """
     result = process_report(report_path, output_dir, enable_security_gate=enable_security_gate)
-    if result.status == "fallback" and not allow_fallback:
-        raise ModelPipelineFailed(result)
-    return result.data
+    if result.status == "fallback":
+        if strict:
+            raise ModelPipelineFailed(result)
+        log.warning("%s: model pipeline failed, returning fallback output (%s)", Path(report_path).name,
+                    "; ".join(result.meta.get("status_reasons") or result.warnings))
+    return json.dumps(result.data, indent=2, ensure_ascii=False)
 
 
 def close() -> None:

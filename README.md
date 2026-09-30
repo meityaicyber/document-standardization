@@ -56,28 +56,27 @@ To call the pipeline from another system, use one function. It takes a report an
 ```python
 from report_to_json import standardize_report
 
-data = standardize_report("path/to/report.pdf")      # PDF or DOCX
-# data is a dict with exactly the structure of master_schema.json
+response = standardize_report("path/to/report.pdf")      # PDF or DOCX
 ```
 
-- The same files as a GUI run are written to `outputs/` (or to `output_dir=...`).
+`response` is the JSON document itself, as text, with exactly the structure of `master_schema.json`.
+That response is the output; it is identical to the `<name>.json` file the run also saves.
+
+- The function returns whenever a result exists. If the model failed and the fallback produced the
+  result, the JSON is still returned; the failure is logged as a warning and recorded in the run report
+  (`<name>.meta.json`, `status: fallback`). Pass `strict=True` to raise `ModelPipelineFailed` instead.
+- It raises only when no JSON can exist: `DocumentBlocked` when the malware pre-gate blocks the file, and
+  `PipelineError` for a missing file, an unsupported type or another processing failure.
+- The run's files are written to `outputs/`, or to `output_dir=...`.
 - The model is set up on the first call and reused. Calls are processed one at a time.
-- Errors are raised, never returned as partial data:
 
-  | Exception | Meaning |
-  | --- | --- |
-  | `ModelPipelineFailed` | The model was unavailable or failed, so only fallback output exists. Pass `allow_fallback=True` to receive that output instead; the exception's `.result` also holds it. |
-  | `DocumentBlocked` | The malware pre-gate blocked the file. |
-  | `PipelineError` | Missing file, unsupported type, or another processing failure (the two above are subclasses). |
-
-When the caller also needs the run status or run report, use `process_report`, which returns the JSON
-together with them:
+When the caller also needs the run status or the run report, use `process_report`:
 
 ```python
 from report_to_json import process_report
 
 result = process_report("path/to/report.pdf")
-result.data      # the JSON
+result.data      # the JSON, as a dict
 result.status    # "ok", "needs_review" or "fallback"
 result.meta      # the run report (also saved as <name>.meta.json)
 ```

@@ -3,7 +3,7 @@
 Integration entry point::
 
     from report_to_json import standardize_report
-    data = standardize_report("report.pdf")
+    response = standardize_report("report.pdf")   # the standardised JSON, as text
 """
 
 __version__ = "4.0.0"
