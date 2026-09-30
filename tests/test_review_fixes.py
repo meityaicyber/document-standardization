@@ -72,7 +72,7 @@ def test_zip_with_real_encrypted_flag_is_handled(tmp_path):
 
 def test_model_load_failure_is_a_backend_error_and_not_retried(tmp_path, monkeypatch):
     (tmp_path / "config.json").write_text("{}")
-    backend = backends.TransformersBackend(config.get_model("gemma-4-31b"), tmp_path)
+    backend = backends.TransformersBackend(config.get_model("nemotron-3-nano-omni"), tmp_path)
     calls = []
 
     def fail():
@@ -100,7 +100,7 @@ def test_non_json_server_reply_is_a_backend_error(monkeypatch):
 
     monkeypatch.setattr(backends.urllib.request, "urlopen", lambda req, timeout=None: Reply())
     with pytest.raises(backends.BackendError, match="did not return JSON"):
-        backends.OpenAICompatBackend(config.get_model("gemma-4-31b"), "http://h/v1").generate("p")
+        backends.OpenAICompatBackend(config.get_model("nemotron-3-nano-omni"), "http://h/v1").generate("p")
 
 
 # --- conversion ------------------------------------------------------------------------------
@@ -143,24 +143,3 @@ def test_page_report_lists_words_missing_from_the_kept_attempt(report_pdf, tmp_p
     issue = next(i for i in page["issues"] if "below" in i)
     assert "broken" not in issue and "authentication" not in issue  # present in the kept attempt
     assert "unencrypted" in issue or "impact" in issue
-
-
-# --- GUI --------------------------------------------------------------------------------------
-
-def test_toggling_the_gate_keeps_the_loaded_pipeline(monkeypatch):
-    import tkinter as tk
-
-    from report_to_json import gui
-
-    try:
-        app = gui.ReportToJsonApp()
-    except tk.TclError as exc:
-        pytest.skip(f"Tk unavailable: {exc}")
-    try:
-        app.withdraw()
-        first = app._pipeline()
-        app._enable_gate.set(False)
-        second = app._pipeline()
-        assert second is first and second.enable_security_gate is False
-    finally:
-        app.destroy()

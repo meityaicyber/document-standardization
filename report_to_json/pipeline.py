@@ -4,7 +4,7 @@ The document standardisation pipeline. Every front-end calls ``DocumentPipeline.
   0  Malware pre-gate on the file as received (fails closed)
   1  Normalise to PDF (DOCX converted after passing the gate, then re-scanned)
   2  Offload images to deep storage; each placement gets a pointer tag
-  3  Pass 1: the selected model transcribes every page (images masked by their tags)
+  3  Pass 1: the model (Nemotron 3 Nano Omni) transcribes every page (images masked by their tags)
   4  Pass 2: the same model restructures the transcript into the master schema
   5  Enforce the master schema, check completeness, save
 

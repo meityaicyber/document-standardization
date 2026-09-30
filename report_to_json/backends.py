@@ -1,5 +1,5 @@
 """
-Model backends. One selected model serves both passes through a single backend.
+Model backends. The model serves both passes through a single backend.
 
 ``OpenAICompatBackend``  a local OpenAI-compatible server (vLLM, SGLang, TensorRT-LLM).
                          Preferred: handles 100B-class MoE models across GPUs, prefix-caches
@@ -102,7 +102,7 @@ class OpenAICompatBackend:
     def generate(self, prompt: str, image: Optional[Image.Image] = None,
                  json_schema: Optional[Dict[str, Any]] = None, max_tokens: int = 8192) -> Generation:
         content: list = []
-        if image is not None:  # image before text (required by Gemma 4, harmless elsewhere)
+        if image is not None:  # image first, then the instruction
             content.append({"type": "image_url", "image_url": {"url": _png_data_url(image)}})
         content.append({"type": "text", "text": prompt})
         payload: Dict[str, Any] = {
@@ -174,7 +174,7 @@ class TransformersBackend:
         common = {"trust_remote_code": self.profile.trust_remote_code, "local_files_only": True}
         self._processor = transformers.AutoProcessor.from_pretrained(str(self.weights), **common)
         errors = []
-        # The three supported models register under different auto classes depending on version.
+        # Which auto class the model registers under depends on the transformers version.
         for cls_name in ("AutoModelForImageTextToText", "AutoModelForMultimodalLM", "AutoModelForCausalLM"):
             cls = getattr(transformers, cls_name, None)
             if cls is None:

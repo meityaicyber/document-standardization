@@ -1,6 +1,6 @@
 # Only needed for IN-PROCESS inference (weights loaded inside the app).
 # The recommended deployment runs the model in a local inference server instead
-# (e.g. `vllm serve /models/gemma-4-31B-it`) installed in its own environment.
+# (`vllm serve models/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16`) installed in its own environment.
 -r requirements.txt
 torch>=2.4.0
 transformers>=4.57.0

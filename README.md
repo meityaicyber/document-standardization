@@ -8,7 +8,7 @@ IoT; PDF or DOCX). It produces a single standardised JSON format defined by
 malware gate ─► PDF ─► images to deep storage (pointer tags) ─► VLM transcription ─► schema restructuring ─► JSON
 ```
 
-- **One model runs both passes.** The user picks it: Gemma 4 31B, Llama 4 Scout, or Nemotron 3 Nano Omni.
+- **One local model runs both passes:** NVIDIA Nemotron 3 Nano Omni. No inference API is ever called.
 - **Exactly the master schema.** The output JSON has precisely the structure of `master_schema.json`.
 - **Nothing is dropped.** Transcription is checked against the PDF's text layer. Text that fits no schema
   field, and values the schema can't hold, are kept in a separate run report next to the JSON.
@@ -18,7 +18,7 @@ malware gate ─► PDF ─► images to deep storage (pointer tags) ─► VLM 
 
 Details:
 - how each stage works: [docs/pipeline_overview.md](docs/pipeline_overview.md)
-- model choice and serving: [docs/models.md](docs/models.md); staging the weights: [models/README.md](models/README.md)
+- the model and how to serve it: [docs/models.md](docs/models.md); staging the weights: [models/README.md](models/README.md)
 - what each schema field means: [docs/MASTER_SCHEMA_SPECIFICATION.md](docs/MASTER_SCHEMA_SPECIFICATION.md)
 
 ## Setup
@@ -40,8 +40,7 @@ Word (Windows) or LibreOffice for conversion to PDF.
 python -m report_to_json      # or run_gui.bat, or python gui_app.py
 ```
 
-Pick a report and a model, then press **Process report**. The model panel shows whether the selected
-model is reachable. Output goes to `outputs/`:
+Pick a report and press **Process report**. The model panel shows whether the model is reachable. Output goes to `outputs/`:
 
 | Output | Contents |
 | --- | --- |

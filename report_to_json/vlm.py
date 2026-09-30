@@ -1,5 +1,5 @@
 """
-The decoupled two-pass model pipeline. One selected model runs both passes.
+The decoupled two-pass model pipeline. One model (Nemotron 3 Nano Omni) runs both passes.
 
 Pass 1 (vision)  Each page is rendered with its images replaced by labelled
                  placeholder boxes and transcribed verbatim. The transcript is

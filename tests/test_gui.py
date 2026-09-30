@@ -52,8 +52,10 @@ def _run(app, pdf, tmp_path, timeout=60):
     assert app._worker is None, "pipeline did not finish"
 
 
-def test_model_selector_lists_the_three_models(app):
-    assert list(app.engine_combo["values"]) == [p.label for p in gui_mod.config.MODELS.values()]
+def test_model_panel_shows_the_one_model_and_no_picker(app):
+    assert app.model_name_lbl.cget("text") == gui_mod.MODEL.label
+    assert "Nemotron 3 Nano Omni" in gui_mod.MODEL.label
+    assert not hasattr(app, "engine_combo")
 
 
 def test_successful_run_renders_findings(app, report_pdf, tmp_path, monkeypatch):
@@ -78,3 +80,13 @@ def test_fallback_run_is_shown_as_failure(app, report_pdf, tmp_path, monkeypatch
     assert app._result.status == "fallback"
     assert "FAILED" in app.header_status.cget("text")
     assert app.header_status.cget("fg") == gui_mod.ROSE
+
+
+def test_toggling_the_gate_keeps_the_loaded_pipeline(app):
+    first = app._pipeline()
+    app._enable_gate.set(False)
+    try:
+        second = app._pipeline()
+        assert second is first and second.enable_security_gate is False
+    finally:
+        app._enable_gate.set(True)

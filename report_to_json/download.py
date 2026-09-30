@@ -1,19 +1,19 @@
 """
 Stage model weights for an air-gapped deployment, and verify them on arrival.
 
-The weights are not kept in the repository (about 346 GB in total, with single
-files up to 50 GB). ``models/manifest.json`` pins each model to an exact revision
-and lists every file with its size and checksum instead.
+The weights are not kept in the repository (about 66 GB in multi-gigabyte files).
+``models/manifest.json`` pins the model to an exact revision and lists every file
+with its size and checksum instead.
 
 On a machine WITH internet access:
     python -m report_to_json.download --status
-    python -m report_to_json.download --model gemma-4-31b --dest D:\\transfer\\models
+    python -m report_to_json.download --model nemotron-3-nano-omni --dest D:\\transfer\\models
     python -m report_to_json.download --refresh-manifest      # re-pin to the latest revisions
 
 On the air-gapped system, after copying the folders into MODELS_DIR:
-    python -m report_to_json.download --verify gemma-4-31b
+    python -m report_to_json.download --verify nemotron-3-nano-omni
 
-Gated repositories (Llama 4) need an accepted licence and ``HF_TOKEN`` for downloading.
+Set ``HF_TOKEN`` if the repository requires authentication.
 The pipeline itself never downloads anything.
 """
 

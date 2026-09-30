@@ -82,7 +82,7 @@ def render_dpi() -> int:
 
 @dataclass(frozen=True)
 class ModelProfile:
-    """One selectable model. The same model runs both passes."""
+    """A local model. The same model runs both passes."""
 
     key: str
     label: str
@@ -103,25 +103,9 @@ class ModelProfile:
         return "R2J_" + self.key.upper().replace("-", "_").replace(".", "_")
 
 
+# The pipeline runs on exactly one model. The registry shape is kept so the profile's
+# settings (template arguments, remote code, env prefix) stay in one declared place.
 MODELS: Dict[str, ModelProfile] = {
-    "gemma-4-31b": ModelProfile(
-        key="gemma-4-31b",
-        label="Gemma 4 31B (Google, Apache 2.0)",
-        repo_id="google/gemma-4-31B-it",
-        local_folder="gemma-4-31B-it",
-        context_tokens=262_144,
-        max_output_tokens=32_768,
-        note="Dense 31B. Use the largest visual token budget (1120) for small print.",
-    ),
-    "llama-4-scout": ModelProfile(
-        key="llama-4-scout",
-        label="Llama 4 Scout 17B-16E (Meta)",
-        repo_id="meta-llama/Llama-4-Scout-17B-16E-Instruct",
-        local_folder="Llama-4-Scout-17B-16E-Instruct",
-        context_tokens=1_048_576,
-        max_output_tokens=32_768,
-        note="MoE, 109B total / 17B active. Llama 4 Community License.",
-    ),
     "nemotron-3-nano-omni": ModelProfile(
         key="nemotron-3-nano-omni",
         label="Nemotron 3 Nano Omni 30B-A3B (NVIDIA)",
@@ -135,7 +119,7 @@ MODELS: Dict[str, ModelProfile] = {
     ),
 }
 
-DEFAULT_MODEL = "gemma-4-31b"
+DEFAULT_MODEL = "nemotron-3-nano-omni"
 
 
 def get_model(key: str) -> ModelProfile:

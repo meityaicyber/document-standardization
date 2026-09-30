@@ -7,7 +7,7 @@ document that follows `report_to_json/schema/master_schema.json`. The route is f
 file ─► malware gate ─► PDF ─► images to deep storage ─► pass 1 (VLM transcription) ─► pass 2 (schema) ─► completeness check ─► JSON
 ```
 
-Everything goes through `DocumentPipeline.process_file`. One user-selected model runs both passes
+Everything goes through `DocumentPipeline.process_file`. One model, NVIDIA Nemotron 3 Nano Omni, runs both passes
 (see [models.md](models.md)).
 
 ## 0. Malware pre-gate

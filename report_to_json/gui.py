@@ -54,7 +54,7 @@ TEXT_DIM = "#64748b"
 FONT_FAMILY = "Segoe UI" if sys.platform == "win32" else "Helvetica"
 FONT_MONO = "Consolas" if sys.platform == "win32" else "Courier"
 
-MODEL_KEYS = list(config.MODELS)  # combobox order
+MODEL = config.get_model(config.DEFAULT_MODEL)  # the one model; it runs both passes
 STATUS_STYLE = {  # sidecar "status" -> (banner text, colour)
     "ok": ("Complete", EMERALD),
     "needs_review": ("Needs review", AMBER),
@@ -247,7 +247,7 @@ class ReportToJsonApp(tk.Tk):
         self._configure_styles()
         self._build_layout()
         self._populate_samples()
-        self._on_engine_selected()
+        self._refresh_model_status()
         self.after(100, self._drain_events)
 
         self.lift()
@@ -328,11 +328,9 @@ class ReportToJsonApp(tk.Tk):
 
         c2 = self._card(parent, "2. Model (runs both passes)")
         c2.pack(fill="x", pady=(0, 12))
-        self.engine_combo = ttk.Combobox(c2, state="readonly", font=(FONT_FAMILY, 9),
-                                         values=[config.MODELS[k].label for k in MODEL_KEYS])
-        self.engine_combo.pack(fill="x", padx=12, pady=(8, 4))
-        self.engine_combo.current(MODEL_KEYS.index(config.DEFAULT_MODEL))
-        self.engine_combo.bind("<<ComboboxSelected>>", self._on_engine_selected)
+        self.model_name_lbl = tk.Label(c2, text=MODEL.label, font=(FONT_FAMILY, 10, "bold"), bg=BG_CARD,
+                                       fg=TEXT_MAIN, anchor="w")
+        self.model_name_lbl.pack(fill="x", padx=12, pady=(8, 2))
         self.model_status_lbl = tk.Label(c2, textvariable=self._model_status, font=(FONT_FAMILY, 8, "bold"),
                                          bg=BG_CARD, fg=EMERALD, anchor="w", justify="left", wraplength=380)
         self.model_status_lbl.pack(fill="x", padx=12, pady=(0, 6))
@@ -481,22 +479,19 @@ class ReportToJsonApp(tk.Tk):
         if path:
             self._set_selected_file(str(path))
 
-    def _selected_model(self) -> config.ModelProfile:
-        return config.MODELS[MODEL_KEYS[max(self.engine_combo.current(), 0)]]
-
-    def _on_engine_selected(self, _event=None):
-        profile = self._selected_model()
-        endpoint = config.model_endpoint(profile)
-        weights = config.local_weights(profile)
+    def _refresh_model_status(self):
+        """Show how the model will be reached, or that it is not available."""
+        endpoint = config.model_endpoint(MODEL)
+        weights = config.local_weights(MODEL)
         if endpoint:
-            self._model_status.set(f"Local server: {endpoint}\n{profile.note}")
+            self._model_status.set(f"Local server: {endpoint}")
             self.model_status_lbl.configure(fg=EMERALD)
         elif weights:
-            self._model_status.set(f"In-process from {weights}\n{profile.note}")
+            self._model_status.set(f"In-process from {weights}")
             self.model_status_lbl.configure(fg=EMERALD)
         else:
-            self._model_status.set(f"Not available: set {profile.env_prefix}_ENDPOINT or place weights in "
-                                   f"{config.models_dir() / profile.local_folder}. Runs will use the fallback.")
+            self._model_status.set(f"Not available: set R2J_MODEL_ENDPOINT or place the weights in "
+                                   f"{config.models_dir() / MODEL.local_folder}. Runs will use the fallback.")
             self.model_status_lbl.configure(fg=ROSE)
 
     def _browse_file(self):
@@ -522,12 +517,10 @@ class ReportToJsonApp(tk.Tk):
     # ------------------------------------------------------------------ processing
 
     def _pipeline(self) -> DocumentPipeline:
-        # Cached per model only, so changing other options never reloads the model.
-        key = self._selected_model().key
+        # Built once and reused, so changing options never reloads the model.
+        key = MODEL.key
         if key not in self._pipelines:
-            for old in self._pipelines.values():  # keep at most one model loaded
-                old.close()
-            self._pipelines = {key: DocumentPipeline(model=key)}
+            self._pipelines[key] = DocumentPipeline(model=key)
         pipeline = self._pipelines[key]
         pipeline.enable_security_gate = self._enable_gate.get()
         return pipeline

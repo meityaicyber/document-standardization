@@ -46,13 +46,13 @@ def test_server_request_shape(monkeypatch):
 
 def test_truncation_is_reported(monkeypatch):
     _capture(monkeypatch, {"choices": [{"message": {"content": "{\"a\":"}, "finish_reason": "length"}]})
-    gen = backends.OpenAICompatBackend(config.get_model("gemma-4-31b"), "http://h/v1").generate("p")
+    gen = backends.OpenAICompatBackend(config.get_model("nemotron-3-nano-omni"), "http://h/v1").generate("p")
     assert gen.truncated
 
 
 def test_check_requires_the_served_model(monkeypatch):
     _capture(monkeypatch, {"data": [{"id": "something-else"}]})
-    backend = backends.OpenAICompatBackend(config.get_model("gemma-4-31b"), "http://h/v1")
+    backend = backends.OpenAICompatBackend(config.get_model("nemotron-3-nano-omni"), "http://h/v1")
     with pytest.raises(backends.BackendError, match="SERVED_NAME"):
         backend.check()
 
@@ -62,24 +62,24 @@ def test_unreachable_server_is_a_backend_error(monkeypatch):
         raise backends.urllib.error.URLError("connection refused")
     monkeypatch.setattr(backends.urllib.request, "urlopen", refuse)
     with pytest.raises(backends.BackendError, match="Cannot reach"):
-        backends.OpenAICompatBackend(config.get_model("gemma-4-31b"), "http://h/v1").generate("p")
+        backends.OpenAICompatBackend(config.get_model("nemotron-3-nano-omni"), "http://h/v1").generate("p")
 
 
 def test_create_backend_prefers_server_then_local_weights(monkeypatch, tmp_path):
-    for var in ("R2J_MODEL_ENDPOINT", "R2J_LLAMA_4_SCOUT_ENDPOINT", "R2J_LLAMA_4_SCOUT_PATH"):
+    for var in ("R2J_MODEL_ENDPOINT", "R2J_NEMOTRON_3_NANO_OMNI_ENDPOINT", "R2J_NEMOTRON_3_NANO_OMNI_PATH"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("MODELS_DIR", str(tmp_path))
     with pytest.raises(backends.BackendError, match="not available"):
-        backends.create_backend("llama-4-scout")
+        backends.create_backend("nemotron-3-nano-omni")
 
-    weights = tmp_path / "Llama-4-Scout-17B-16E-Instruct"
+    weights = tmp_path / "Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16"
     weights.mkdir()
     (weights / "config.json").write_text("{}")
     (weights / "model.safetensors").write_bytes(b"")
-    assert isinstance(backends.create_backend("llama-4-scout"), backends.TransformersBackend)
+    assert isinstance(backends.create_backend("nemotron-3-nano-omni"), backends.TransformersBackend)
 
-    monkeypatch.setenv("R2J_LLAMA_4_SCOUT_ENDPOINT", "http://127.0.0.1:8001/v1")
-    assert isinstance(backends.create_backend("llama-4-scout"), backends.OpenAICompatBackend)
+    monkeypatch.setenv("R2J_NEMOTRON_3_NANO_OMNI_ENDPOINT", "http://127.0.0.1:8001/v1")
+    assert isinstance(backends.create_backend("nemotron-3-nano-omni"), backends.OpenAICompatBackend)
 
 
 def test_offline_mode_is_forced():
@@ -87,5 +87,6 @@ def test_offline_mode_is_forced():
     assert os.environ["HF_HUB_OFFLINE"] == "1"
 
 
-def test_all_three_models_are_registered():
-    assert set(config.MODELS) == {"gemma-4-31b", "llama-4-scout", "nemotron-3-nano-omni"}
+def test_the_pipeline_runs_on_exactly_one_model():
+    assert list(config.MODELS) == ["nemotron-3-nano-omni"] == [config.DEFAULT_MODEL]
+    assert config.get_model(config.DEFAULT_MODEL).chat_template_kwargs == {"enable_thinking": False}

@@ -24,14 +24,14 @@ def _manifest_for(files):
             "sha256": hashlib.sha256(data).hexdigest() if lfs else None,
             "git_sha1": None if lfs else hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest(),
         })
-    return {"models": {"gemma-4-31b": {"local_folder": "m", "files": entries}}}
+    return {"models": {"nemotron-3-nano-omni": {"local_folder": "m", "files": entries}}}
 
 
 def test_verify_accepts_an_intact_copy(tmp_path):
     files = [("config.json", b'{"a": 1}', False), ("model.safetensors", b"\x00" * 1000, True)]
     for name, data, _ in files:
         (tmp_path / name).write_bytes(data)
-    assert download.verify("gemma-4-31b", tmp_path, _manifest_for(files)) == []
+    assert download.verify("nemotron-3-nano-omni", tmp_path, _manifest_for(files)) == []
 
 
 def test_verify_reports_missing_truncated_and_corrupt_files(tmp_path):
@@ -40,6 +40,6 @@ def test_verify_reports_missing_truncated_and_corrupt_files(tmp_path):
     manifest = _manifest_for(files)
     (tmp_path / "config.json").write_bytes(b'{"a": 2}')      # same size, different content
     (tmp_path / "a.safetensors").write_bytes(b"\x01" * 50)   # truncated copy
-    problems = download.verify("gemma-4-31b", tmp_path, manifest)
+    problems = download.verify("nemotron-3-nano-omni", tmp_path, manifest)
     assert problems == ["checksum mismatch: config.json", "wrong size: a.safetensors (50 != 100)",
                         "missing: b.safetensors"]
